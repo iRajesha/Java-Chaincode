@@ -1,20 +1,22 @@
 package uidai.gov.aadhaar.chaincode;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 
 import com.google.protobuf.ByteString;
-import io.netty.handler.ssl.OpenSsl;
+import java.io.IOException;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hyperledger.fabric.shim.ChaincodeBase;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import java.time.Clock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.json.JSONException;
-import org.json.JSONObject;
 
+import uidai.gov.aadhaar.model.Aadhaar;
 
 public class AadhaarChaincode extends ChaincodeBase {
 
@@ -36,30 +38,29 @@ public class AadhaarChaincode extends ChaincodeBase {
             String aadhaarNumber = args.get(0);
             String firstName = args.get(1);
             String lastName = args.get(2);
-            JSONObject aadhaarJsonObj = constructAadhaarJsonObject(aadhaarNumber,firstName,lastName,"");
-            
-            //Aadhaar president = new Aadhaar(aadhaarNumber, firstName, lastName);
-            //byte[] data = SerializationUtils.serialize(president);
-          
+            //JSONObject aadhaarJsonObj = constructAadhaarJsonObject(aadhaarNumber,firstName,lastName,"");
 
-            System.out.print(aadhaarJsonObj);
+            Aadhaar adam = new Aadhaar(aadhaarNumber, firstName, lastName);
+            //byte[] data = SerializationUtils.serialize(president);
+
+            System.out.print(adam);
             _logger.info(String.format("aadhaarNumber %s, firstName = %s; lasname = %s", aadhaarNumber, firstName, lastName));
-            
-            stub.putState(aadhaarNumber, aadhaarJsonObj.toString().getBytes("utf-8"));
-           
+
+            stub.putState(aadhaarNumber, new ObjectMapper().writeValueAsBytes(adam));
+
             return newSuccessResponse();
         } catch (Throwable e) {
             return newErrorResponse(e);
         }
     }
-    private JSONObject constructAadhaarJsonObject(String aadhaarNumber, String firstName, String lastName, String registeredBy) throws Exception{
-      JSONObject obj = new JSONObject();
-      obj.put("aadhaarNumber", aadhaarNumber);
-      obj.put("firstName", firstName);
-      obj.put("lastName", lastName);
-      obj.put("registeredBy", registeredBy);
-      return obj;
-    }
+//    private JSONObject constructAadhaarJsonObject(String aadhaarNumber, String firstName, String lastName, String registeredBy) throws Exception{
+//      JSONObject obj = new JSONObject();
+//      obj.put("aadhaarNumber", aadhaarNumber);
+//      obj.put("firstName", firstName);
+//      obj.put("lastName", lastName);
+//      obj.put("registeredBy", registeredBy);
+//      return obj;
+//    }
 
     @Override
     public Response invoke(ChaincodeStub stub) {
@@ -82,46 +83,60 @@ public class AadhaarChaincode extends ChaincodeBase {
         }
     }
 
+    private boolean isStringEmpty(String str) {
+        if (str.trim().length() <= 0 || str == null) {
+            return true;
+        }
+        return false;
+    }
+
     private Response registerAadhaar(ChaincodeStub stub, List<String> args) {
-        if (args.size() != 4) {
+        if (args.size() < 4) {
             return newErrorResponse("Incorrect number of arguments. Expecting 4");
         }
         String aadhaarNumber = args.get(0);
         String firstName = args.get(1);
         String lastName = args.get(2);
         String registerdBy = args.get(3);
- try {
-        byte[] rigistererByte = stub.getState(registerdBy);
-            _logger.info(String.format("Registerer is %s", new String(rigistererByte)));
-       // Aadhaar rigisterer = (Aadhaar)SerializationUtils.deserialize(rigistererByte);
-       if (rigistererByte == null) {
-            return newErrorResponse(String.format("rigisterer %s not found",registerdBy ));
+        if(args.size()>3){
+            try {
+                String jsonString = args.get(4);
+                System.out.println("uidai.gov.aadhaar.chaincode.AadhaarChaincode.registerAadhaar()- json string passed "+ jsonString);
+                Aadhaar aadhaarFromJson = new ObjectMapper().readValue(jsonString, Aadhaar.class);
+                System.out.println("uidai.gov.aadhaar.chaincode.AadhaarChaincode.registerAadhaar() from object -" + aadhaarFromJson.getAadhaarNumber() + aadhaarFromJson.getRegisteredBy());
+            } catch (IOException ex) {
+                Logger.getLogger(AadhaarChaincode.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
+        
+        try {
             
-           
-            JSONObject aadhaarJsonObj;
-      
-            aadhaarJsonObj = constructAadhaarJsonObject(aadhaarNumber,firstName,lastName,registerdBy);
-            //Aadhaar president = new Aadhaar(aadhaarNumber, firstName, lastName);
+            String rigisterer = stub.getStringState(registerdBy);
+            System.out.println("uidai.gov.aadhaar.chaincode.AadhaarChaincode.registerAadhaar() - " + rigisterer );
+            _logger.info(String.format("Registerer is %s", rigisterer));
+            // Aadhaar rigisterer = (Aadhaar)SerializationUtils.deserialize(rigistererByte);
+            if (isStringEmpty(rigisterer)) {
+                return newErrorResponse(String.format("rigisterer %s not found", registerdBy));
+            }
+
+            // JSONObject aadhaarJsonObj;
+            // aadhaarJsonObj = constructAadhaarJsonObject(aadhaarNumber,firstName,lastName,registerdBy);
+            Aadhaar newAadharEntry = new Aadhaar(aadhaarNumber, firstName, lastName,registerdBy);
             //byte[] data = SerializationUtils.serialize(president);
-            
-            
-            System.out.print(aadhaarJsonObj);
+
+            System.out.println(newAadharEntry);
             _logger.info(String.format("aadhaarNumber %s, firstName = %s; lasname = %s", aadhaarNumber, firstName, lastName));
-            
-            stub.putState(aadhaarNumber, aadhaarJsonObj.toString().getBytes("utf-8"));
-           
-       
-        _logger.info("Aadhaar Registration complete");
-     
+
+            stub.putState(aadhaarNumber, new ObjectMapper().writeValueAsBytes(newAadharEntry));
+
+            _logger.info("Aadhaar Registration complete");
 
         } catch (Exception ex) {
             Logger.getLogger(AadhaarChaincode.class.getName()).log(Level.SEVERE, null, ex);
             return newErrorResponse("Transaction failed : Register aadhaar");
         }
-             return newSuccessResponse("Aadhaar registration successful", ByteString.copyFrom(aadhaarNumber, UTF_8).toByteArray());
+        return newSuccessResponse("Aadhaar registration successful", ByteString.copyFrom(aadhaarNumber, UTF_8).toByteArray());
 
-        
     }
 
     // Deletes an entity from state
@@ -142,26 +157,25 @@ public class AadhaarChaincode extends ChaincodeBase {
         }
         String key = args.get(0);
         //byte[] stateBytes
-        byte[] aadhaarBytes	= stub.getState(key);
-        
-        if (aadhaarBytes == null) {
+        byte[] aadhaar = stub.getState(key);
+
+        if (isStringEmpty(new String(aadhaar))) {
             return newErrorResponse(String.format("Error: state for %s is null", key));
         }
         //JSONObject aadhaar =null;
-        try {
-          JSONObject  aadhaar=new JSONObject(new String(aadhaarBytes));
-          _logger.info(String.format("Query Response:\nFirstName: %s, LastName: %s\n", aadhaar.getString("firstName"), aadhaar.getString("lastName")));
-        } catch (JSONException ex) {
-            Logger.getLogger(AadhaarChaincode.class.getName()).log(Level.SEVERE, null, ex);
-        }    
-        return newSuccessResponse(key, aadhaarBytes);
-        
+//        try {
+//          //JSONObject  aadhaar=new JSONObject(new String(aadhaarBytes));
+//          _logger.info(String.format("Query Response:\nFirstName: %s, LastName: %s\n", aadhaar.getString("firstName"), aadhaar.getString("lastName")));
+//        } catch (JSONException ex) {
+//            Logger.getLogger(AadhaarChaincode.class.getName()).log(Level.SEVERE, null, ex);
+//        }    
+        return newSuccessResponse(key, aadhaar);
+
     }
 
     public static void main(String[] args) {
-        System.out.println("OpenSSL avaliable: " + OpenSsl.isAvailable());
+
         new AadhaarChaincode().start(args);
     }
 
 }
-

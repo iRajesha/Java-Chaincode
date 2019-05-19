@@ -24,6 +24,9 @@ public class Aadhaar implements Serializable{
     public void setRegisteredBy(String registeredBy) {
         this.registeredBy = registeredBy;
     }
+     public Aadhaar() {
+        
+    }
 
     public Aadhaar(String aadhaarNumber, String firstName, String lastName, String registeredBy) {
         this.aadhaarNumber = aadhaarNumber;
