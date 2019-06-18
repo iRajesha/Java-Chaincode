@@ -12,7 +12,6 @@ import org.hyperledger.fabric.shim.ChaincodeBase;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import java.time.Clock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
